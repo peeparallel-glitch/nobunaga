@@ -646,6 +646,46 @@ class Game {
         
         this.setupTitleScreen();
         this.zoom = 1.0;
+        
+        // Adjust zoom based on OS / screen size after layout
+        setTimeout(() => this.autoAdjustScreen(), 100);
+    }
+
+    autoAdjustScreen() {
+        const isMobile = window.innerWidth <= 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const container = document.getElementById('map-world-container');
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        
+        if (isMobile) {
+            this.setZoom(0.4, rect.width / 2, rect.height / 2);
+        } else {
+            this.setZoom(0.8, rect.width / 2, rect.height / 2);
+        }
+    }
+
+    setZoom(newZoom, centerX, centerY) {
+        const container = document.getElementById('map-world-container');
+        const viewport = document.getElementById('map-scroll-viewport');
+        if (!container || !viewport) return;
+        
+        const oldZoom = this.zoom;
+        this.zoom = Math.max(0.2, Math.min(3.0, newZoom));
+        
+        // Adjust scroll to keep the point under the cursor stable
+        const rect = container.getBoundingClientRect();
+        const relX = (centerX || (rect.width / 2)) + container.scrollLeft;
+        const relY = (centerY || (rect.height / 2)) + container.scrollTop;
+        
+        const ratio = this.zoom / oldZoom;
+        
+        this.canvas.style.width = (4000 * this.zoom) + "px";
+        this.canvas.style.height = (2000 * this.zoom) + "px";
+        viewport.style.width = (4000 * this.zoom) + "px";
+        viewport.style.height = (2000 * this.zoom) + "px";
+        
+        container.scrollLeft = relX * ratio - (centerX || (rect.width / 2));
+        container.scrollTop = relY * ratio - (centerY || (rect.height / 2));
     }
 
     setupTitleScreen() {
@@ -850,27 +890,7 @@ class Game {
             };
         }
 
-        // --- Zoom Implementation ---
-        const viewport = document.getElementById('map-scroll-viewport');
-        const applyZoom = (newZoom, centerX, centerY) => {
-            const oldZoom = this.zoom;
-            this.zoom = Math.max(0.2, Math.min(3.0, newZoom));
-            
-            // Adjust scroll to keep the point under the cursor stable
-            const rect = container.getBoundingClientRect();
-            const relX = (centerX || (rect.width / 2)) + container.scrollLeft;
-            const relY = (centerY || (rect.height / 2)) + container.scrollTop;
-            
-            const ratio = this.zoom / oldZoom;
-            
-            this.canvas.style.width = (4000 * this.zoom) + "px";
-            this.canvas.style.height = (2000 * this.zoom) + "px";
-            viewport.style.width = (4000 * this.zoom) + "px";
-            viewport.style.height = (2000 * this.zoom) + "px";
-            
-            container.scrollLeft = relX * ratio - (centerX || (rect.width / 2));
-            container.scrollTop = relY * ratio - (centerY || (rect.height / 2));
-        };
+        // --- Zoom Implementation is now in this.setZoom ---
 
         // Mouse Wheel Zoom
         container.addEventListener('wheel', (e) => {
@@ -878,7 +898,7 @@ class Game {
             const delta = -e.deltaY;
             const factor = delta > 0 ? 1.1 : 0.9;
             const rect = container.getBoundingClientRect();
-            applyZoom(this.zoom * factor, e.clientX - rect.left, e.clientY - rect.top);
+            this.setZoom(this.zoom * factor, e.clientX - rect.left, e.clientY - rect.top);
         }, { passive: false });
 
         // Pinch Zoom
@@ -897,7 +917,7 @@ class Game {
                     const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                     const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                     const rect = container.getBoundingClientRect();
-                    applyZoom(this.zoom * factor, centerX - rect.left, centerY - rect.top);
+                    this.setZoom(this.zoom * factor, centerX - rect.left, centerY - rect.top);
                     initialPinchDist = dist;
                 }
             }
@@ -1336,14 +1356,20 @@ class Game {
             ctx.strokeRect(t.gridX, t.gridY, 160, 160);
         });
 
-        // Draw current view rectangle
+        // Draw current view rectangle (adjust for zoom)
         const container = document.getElementById('map-world-container');
         if (container) {
+            const z = this.zoom || 1.0;
+            const rx = container.scrollLeft / z;
+            const ry = container.scrollTop / z;
+            const rw = container.clientWidth / z;
+            const rh = container.clientHeight / z;
+
             ctx.strokeStyle = "#ffd700";
             ctx.lineWidth = 20;
-            ctx.strokeRect(container.scrollLeft, container.scrollTop, container.clientWidth, container.clientHeight);
+            ctx.strokeRect(rx, ry, rw, rh);
             ctx.fillStyle = "rgba(255, 215, 0, 0.1)";
-            ctx.fillRect(container.scrollLeft, container.scrollTop, container.clientWidth, container.clientHeight);
+            ctx.fillRect(rx, ry, rw, rh);
         }
         
         this.renderer.ctx = originalCtx;
