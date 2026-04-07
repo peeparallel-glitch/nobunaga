@@ -689,7 +689,19 @@ class Game {
     }
 
     setupTitleScreen() {
-        document.getElementById('btn-start').onclick = () => {
+        document.getElementById('btn-start').onclick = async () => {
+            // Try to force fullscreen and landscape if on mobile
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                }
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (e) {
+                console.log("Fullscreen or orientation lock failed/unsupported.", e);
+            }
+            
             document.getElementById('title-screen').classList.add('hidden');
             this.showSelectScreen();
         };
