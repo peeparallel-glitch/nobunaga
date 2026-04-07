@@ -250,15 +250,15 @@ class Battle {
         this.shake = 0;
         this.battleLog = `${player.name} と ${enemy.name} の戦いが始まった！`;
         this.commands = [
-            { id: 'attack', label: '攻撃', x: 80, y: 510, w: 120, h: 50 },
-            { id: 'tactic_menu', label: '計略', x: 220, y: 510, w: 120, h: 50 },
-            { id: 'retreat', label: '退却', x: 360, y: 510, w: 120, h: 50 }
+            { id: 'attack', label: '攻撃', x: 80, y: 620, w: 120, h: 50 },
+            { id: 'tactic_menu', label: '計略', x: 220, y: 620, w: 120, h: 50 },
+            { id: 'retreat', label: '退却', x: 360, y: 620, w: 120, h: 50 }
         ];
         this.tacticOptions = [
-            { id: 'fire', label: '火計 (5MP)', cost: 5, x: 80, y: 440, w: 120, h: 50 },
-            { id: 'water', label: '水計 (8MP)', cost: 8, x: 220, y: 440, w: 120, h: 50 },
-            { id: 'heal', label: '援軍 (10MP)', cost: 10, x: 360, y: 440, w: 120, h: 50 },
-            { id: 'back', label: '戻る', cost: 0, x: 500, y: 440, w: 120, h: 50 }
+            { id: 'fire', label: '火計 (5MP)', cost: 5, x: 80, y: 550, w: 120, h: 50 },
+            { id: 'water', label: '水計 (8MP)', cost: 8, x: 220, y: 550, w: 120, h: 50 },
+            { id: 'heal', label: '援軍 (10MP)', cost: 10, x: 360, y: 550, w: 120, h: 50 },
+            { id: 'back', label: '戻る', cost: 0, x: 500, y: 550, w: 120, h: 50 }
         ];
         this.hoveredCommandId = null;
         
@@ -500,7 +500,7 @@ class Battle {
     update() {
         const ctx = this.ctx;
         ctx.fillStyle = "#1e1e1e";
-        ctx.fillRect(0, 0, 1000, 600);
+        ctx.fillRect(0, 0, 1280, 720);
         
         const shakeX = this.shake > 0 ? (Math.random()-0.5)*this.shake : 0;
         if (this.shake > 0) this.shake *= 0.8;
@@ -518,7 +518,7 @@ class Battle {
 
         this.enemyUnits.forEach((u, i) => {
             const isActing = (this.isAnimating && this.currentActorSide === 'enemy' && this.currentActorIdx === i);
-            const x = 800 + (this.turn === 'player' ? shakeX : 0) + (isActing ? this.attackerLunge : 0);
+            const x = 1000 + (this.turn === 'player' ? shakeX : 0) + (isActing ? this.attackerLunge : 0);
             const y = 140 + i * 75;
             this.renderer.drawBattleUnit('right', x, y, 50, u.hp, u.maxHp, u.name, isActing);
         });
@@ -526,7 +526,7 @@ class Battle {
         // Draw Floating Damage Numbers
         if (this.damageText && this.damageText.timer > 0) {
             const dt = this.damageText;
-            const baseX = (dt.side === 'left' ? 150 : 800) + 25; // Center of unit box
+            const baseX = (dt.side === 'left' ? 150 : 1000) + 25; // Center of unit box
             const baseY = (140 + dt.index * 75) + 30; // Start inside unit box
             
             // Pop up and fade out animation
@@ -566,7 +566,7 @@ class Battle {
         ctx.fillText(`MP: ${this.playerMp}`, 150, barY - 5);
 
         // Enemy MP Above General
-        const enemyBarX = 800 - barW + 50; 
+        const enemyBarX = 1000 - barW + 50; 
         ctx.fillStyle = "#444";
         ctx.fillRect(enemyBarX, barY, barW, barH);
         ctx.fillStyle = "#e74c3c";
@@ -576,11 +576,11 @@ class Battle {
 
         ctx.textAlign = "right";
         ctx.fillText(`敵軍 MP: ${this.enemyMp}`, enemyBarX + barW, barY - 5);
-        ctx.fillText(`${this.enemy.name}`, 950, 25);
+        ctx.fillText(`${this.enemy.name}`, 1150, 25);
 
         // Message Box (Moved slightly up)
         ctx.fillStyle = "rgba(0,0,0,0.6)";
-        ctx.fillRect(50, 45, 900, 50);
+        ctx.fillRect(50, 45, 1180, 50);
         ctx.fillStyle = "#fff";
         ctx.font = "18px Arial";
         ctx.textAlign = "left";
@@ -649,18 +649,42 @@ class Game {
         
         // Adjust zoom based on OS / screen size after layout
         setTimeout(() => this.autoAdjustScreen(), 100);
+        window.addEventListener('resize', () => this.autoAdjustScreen());
     }
 
     autoAdjustScreen() {
-        const isMobile = window.innerWidth <= 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const isMobile = window.innerWidth <= 896 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const app = document.getElementById('app');
+        
+        if (app) {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            
+            app.style.position = 'fixed';
+            app.style.top = '50%';
+            app.style.left = '50%';
+            app.style.margin = '-360px 0 0 -640px'; // Center unscaled (half of 720 / 1280)
+            app.style.transformOrigin = 'center center';
+            
+            if (isMobile && w < h) {
+                // Portrait mode: Scale down to fit the tightest bounds when rotated
+                const scale = Math.min(w / 720, h / 1280);
+                app.style.transform = `scale(${scale}) rotate(90deg)`;
+            } else {
+                // Landscape or Desktop: standard scale down if too small
+                const scale = Math.min(1.0, w / 1280, h / 720);
+                app.style.transform = `scale(${scale})`;
+            }
+        }
+
         const container = document.getElementById('map-world-container');
         if (!container) return;
         const rect = container.getBoundingClientRect();
         
         if (isMobile) {
-            this.setZoom(0.4, rect.width / 2, rect.height / 2);
+            this.setZoom(0.4, 2000, 1000); // Zoom out to safe default 
         } else {
-            this.setZoom(0.8, rect.width / 2, rect.height / 2);
+            this.setZoom(0.8, 2000, 1000); // Centered default
         }
     }
 
